@@ -1,15 +1,27 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
   <meta charset="UTF-8">
   <title>Sibu Guessr - 家乡地理大挑战</title>
   <style>
     /* 基础重置 */
-    body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
     /* 街景占满整个屏幕作为背景 */
-    #pano { width: 100%; height: 100%; position: absolute; z-index: 1; }
-    
+    #pano {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      z-index: 1;
+    }
+
     /* 猜测地图悬浮在右下角 */
     #map-container {
       position: absolute;
@@ -21,13 +33,23 @@
       border: 4px solid white;
       border-radius: 10px;
       overflow: hidden;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.6);
-      transition: all 0.3s ease; /* 动画过渡效果 */
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
+      transition: all 0.3s ease;
+      /* 动画过渡效果 */
       opacity: 0.8;
     }
+
     /* 玩家鼠标移过去时，地图变大且完全不透明，方便点击 */
-    #map-container:hover { width: 500px; height: 380px; opacity: 1; }
-    #map { width: 100%; height: 100%; }
+    #map-container:hover {
+      width: 500px;
+      height: 380px;
+      opacity: 1;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
 
     /* 左下角的控制与分数面板 */
     #ui-panel {
@@ -39,21 +61,109 @@
       color: white;
       padding: 20px;
       border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
       width: 300px;
     }
-    h2 { margin: 0 0 10px 0; font-size: 22px; color: #4CAF50; }
-    p { margin: 0 0 15px 0; line-height: 1.5; font-size: 15px;}
-    
-    button { 
-      padding: 10px 20px; cursor: pointer; font-size: 16px; font-weight: bold;
-      background: #4CAF50; color: white; border: none; border-radius: 5px; width: 100%;
+
+    h2 {
+      margin: 0 0 10px 0;
+      font-size: 22px;
+      color: #4CAF50;
     }
-    button:hover { background: #45a049; }
-    button:disabled { background: #666; color: #aaa; cursor: not-allowed; }
+
+    p {
+      margin: 0 0 15px 0;
+      line-height: 1.5;
+      font-size: 15px;
+    }
+
+    button {
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      width: 100%;
+    }
+
+    button:hover {
+      background: #45a049;
+    }
+
+    button:disabled {
+      background: #666;
+      color: #aaa;
+      cursor: not-allowed;
+    }
+
+    /* 顶部 UI 区域 */
+    #top-bar {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      right: 20px;
+      z-index: 3;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      /* 让中间部分不挡点击 */
+    }
+
+    #difficulty-panel {
+      pointer-events: auto;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #timer-panel {
+      pointer-events: auto;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 24px;
+      font-weight: bold;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    select {
+      padding: 5px;
+      font-size: 14px;
+      border-radius: 4px;
+      background: #333;
+      color: white;
+      border: 1px solid #555;
+    }
   </style>
 </head>
+
 <body>
+
+  <!-- 顶部控制栏 -->
+  <div id="top-bar">
+    <div id="difficulty-panel">
+      <label for="difficulty">难度：</label>
+      <select id="difficulty">
+        <option value="casual">休闲模式 (浏览景点，无计时)</option>
+        <option value="simple">简单 (著名地标)</option>
+        <option value="medium">中等 (教堂/学校等)</option>
+        <option value="hard">困难 (随机街道)</option>
+      </select>
+    </div>
+    <div id="timer-panel">00:00</div>
+  </div>
 
   <!-- 1. 街景显示区 -->
   <div id="pano"></div>
@@ -67,23 +177,133 @@
   <div id="ui-panel">
     <h2>Sibu Guessr 🦢</h2>
     <p id="message">看看四周的街景，<br>在右下角地图上点击你认为的位置！</p>
-    <button id="guess-btn" disabled>确认位置</button>
-    <button id="next-btn" style="display:none;">下一局</button>
+    <div id="action-buttons" style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <button id="return-btn" style="background: #2196F3; flex: 1;">回到起点</button>
+      <button id="skip-btn" style="background: #FF9800; flex: 1;">跳过</button>
+      <button id="guess-btn" disabled style="flex: 100%;">确认位置</button>
+    </div>
+    <button id="next-btn" style="display:none; margin-top: 10px;">下一局</button>
   </div>
 
   <script>
-    // 预设几个 Sibu 经典的且有街景的坐标作为题库
-    const locations = [
-      { lat: 2.2894, lng: 111.8267 }, // 诗巫城市广场 (Sibu Town Square)
-      { lat: 2.2872, lng: 111.8286 }, // 中央市场 (Central Market)
-      { lat: 2.2905, lng: 111.8279 }, // 三洋大厦附近 (Wisma Sanyan)
-      { lat: 2.2863, lng: 111.8271 }, // 大伯公庙 (Tua Pek Kong Temple)
-      { lat: 2.3089, lng: 111.8398 }  // 新珠山 (Sungai Merah)
+    // 简单模式：著名地标
+    const locationsSimple = [
+      { lat: 2.2913326, lng: 111.8238557, name: "诗巫城市广场 (Sibu Town Square)", desc: "马来西亚最大的城市广场之一，常用于举办大型活动如婆罗洲文化节。" },
+      { lat: 2.2872, lng: 111.8286, name: "中央市场 (Central Market)", desc: "全马最大的室内市场，有超过千个摊位，可以买到各种本地特色美食和新鲜农产品。" },
+      { lat: 2.2906904,lng: 111.8255716, name: "三洋大厦 (Wisma Sanyan)", desc: "曾是砂拉越最高的大楼，诗巫的标志性建筑，内有购物中心和政府办公楼。" },
+      { lat: 2.2872453, lng: 111.8262137, name: "大伯公庙 (Tua Pek Kong Temple)", desc: "诗巫最古老的中国庙宇，拥有标志性的七层观音塔。" },
+      { lat: 2.2892267, lng: 111.8280148, name: "诗巫文化遗产中心 (Sibu Heritage Center)", desc: "展示了诗巫丰富的多元文化和历史发展，前身是诗巫市议会大楼。" },
+      { lat: 2.2908105, lng: 111.825997, name: "麦当劳 (McDonald Sibu)", desc: "诗巫唯一一间的麦当劳，含金量无需置疑。" }, //
+      { lat: 2.2914703, lng: 111.8238107, name: "三洋广场 (Tun Tuanku Bujang Square)", desc: "连接三洋大厦和周边商业区的重要地带。" },
+      { lat: 2.2905111, lng: 111.8235201, name: "创走廊 (Chuang Corridor)", desc: "纪念福州垦场百周年的长廊，环境优美，是散步的好去处。" },
+      { lat: 2.2921901, lng: 111.8194917, name: "Waterfront Apartment", desc: "诗巫河畔公寓，提供俯瞰拉让江的美丽江景。" },
+      { lat: 2.2977759, lng: 111.8254852, name: "旧星光", desc: "旧星光超市（Star Mega Mall前身所在地周边），曾是繁华的购物热点。" },
+      { lat: 2.30774, lng: 111.826268, name: "德大游泳池 (Delta Swimming Pool)", desc: "诗巫人喜爱的公共游泳池，许多人在这里学会了游泳。" },
+      { lat: 2.2841977, lng: 111.831807, name: "诗巫天鹅雕像 (Sibu Swan Statue)", desc: "诗巫的标志性天鹅雕像，代表着诗巫“天鹅城”的美称。" },
+      { lat: 2.2878636, lng: 111.8266888, name: "诗巫夜市 (Sibu Night Market)", desc: "热闹非凡的夜市，有各种当地小吃、美食和日常用品，夜市晚上才开，但是我找不到晚上的照片。" }, //
+      { lat: 2.2934359, lng: 111.8430267, name: "Medan Mall", desc: "诗巫著名的购物中心之一，深受当地居民喜爱。" },
+      { lat: 2.2853238, lng: 111.8472704, name: "Hann's Residence", desc: "现代化的高级住宅区与商业中心,这里应该是Sibu最繁荣的地方了，开了第一间Chagee和Subway。" }, //
+      { lat: 2.3075306, lng: 111.8484413, name: "7夜", desc: "7夜商业区，是聚餐和休闲的好地方。" },
+      { lat: 2.3115824, lng: 111.847226, name: "Delta Mall", desc: "德大商场，诗巫热门的购物地标。" },
+      { lat: 2.312957, lng: 111.8440069, name: "兴化纪念广场", desc: "为了纪念兴化人南来诗巫垦荒而建立的广场。" },
+      { lat: 2.3106516, lng: 111.846072, name: "亲善美食园 (Taman Muhibbah)", desc: "以丰富多样的本地美食摊位而闻名，晚上的时候超多人吃的。" },
+      { lat: 2.3083246, lng: 111.8454859, name: "Starbucks Sibu", desc: "Sibu唯一一间Starbucks，虽然刚开业的时候超级多人，但是现在好像比较冷清了。" }, //
+      { lat: 2.3056045, lng: 111.8494482, name: "Pahlawan Everwin", desc: "位于巴士站附近的 Everwin 超市，折扣促销只有华利能比。" }, //
+      { lat: 2.3008116, lng: 111.8424956, name: "金福", desc: "当地知名的地标与商业区。" },
+      { lat: 2.3028709, lng: 111.843355, name: "New Generation Square", desc: "Google到的名字,这里有蛮多东西吃的。" }
+    ];
+
+    // 中等模式：次著名地点（教堂、学校、医疗等）
+    const locationsMedium = [
+      { lat: 2.2866318, lng: 111.832029, name: "圣心大教堂 (Sacred Heart Cathedral)", desc: "诗巫天主教徒的中心，建筑宏伟，是重要的宗教地标。" },
+      { lat: 2.2958855, lng: 111.8259612, name: "卫理中学 (SMK Methodist Sibu)", desc: "诗巫著名学府之一，培养了许多杰出人才。" },
+      { lat: 2.2962387, lng: 111.8413568, name: "圣心中学 (SMK Sacred Heart)", desc: "Sibu唯一的男子中学（除了F6有女生），隔壁就是Sibu唯一的女校。" }, //
+      { lat: 2.3411646, lng: 111.843622, name: "砂拉越科技大学 (UTS)", desc: "砂拉越科技大学，建筑设计极具现代化，也是诗巫的高等教育中心。" },
+      { lat: 2.3098092, lng: 111.8298293, name: "敦化中学 (SMK Tung Hua)", desc: "诗巫重要的国民型华文中学，传承中华文化的同时提供现代教育。" },
+      { lat: 2.2923654, lng: 111.837199, name: "拉让医疗中心 (Rejang Medical Center)", desc: "诗巫著名的私人医疗中心。" },
+      { lat: 2.3126264, lng: 111.845694, name: "怀安堂 (Hwei Ann Church)", desc: "诗巫著名的卫理公会教堂之一，耶稣爱你。" }
     ];
 
     let map, panorama;
     let guessMarker, actualMarker, line;
     let currentLocation;
+    let timerInterval;
+    let timeElapsed = 0;
+
+    let playedSimple = [];
+    let playedMedium = [];
+    let playedCasual = [];
+    let lastPlayedLoc = null;
+
+    function getNextLocation(locations, playedArray) {
+      if (playedArray.length >= locations.length) {
+        playedArray.length = 0; // 如果题库都玩过了，就重置记录
+      }
+      let available = locations.filter(loc => !playedArray.includes(loc));
+
+      // 防止重置后马上抽到上一把刚玩过的地点
+      if (available.length > 1 && lastPlayedLoc) {
+        available = available.filter(loc => loc !== lastPlayedLoc);
+      }
+
+      const loc = available[Math.floor(Math.random() * available.length)];
+      playedArray.push(loc);
+      lastPlayedLoc = loc;
+      return loc;
+    }
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+      const s = (seconds % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timeElapsed = 0;
+      document.getElementById("timer-panel").innerText = "00:00";
+      timerInterval = setInterval(() => {
+        timeElapsed++;
+        document.getElementById("timer-panel").innerText = formatTime(timeElapsed);
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+    }
+
+    // 困难模式：获取随机街景
+    let lastRandomPanoId = null;
+
+    function getRandomSibuLocation(callback, retries = 0) {
+      if (retries > 50) {
+        // 退回到简单模式
+        callback(getNextLocation(locationsSimple, playedSimple));
+        return;
+      }
+      const minLat = 2.25, maxLat = 2.35;
+      const minLng = 111.78, maxLng = 111.88;
+      const randomLat = Math.random() * (maxLat - minLat) + minLat;
+      const randomLng = Math.random() * (maxLng - minLng) + minLng;
+      const randomLatLng = new google.maps.LatLng(randomLat, randomLng);
+
+      const svs = new google.maps.StreetViewService();
+      // 将搜索半径缩小，避免经常吸附到同一条大道
+      svs.getPanorama({ location: randomLatLng, radius: 500 }, (data, status) => {
+        if (status === google.maps.StreetViewStatus.OK) {
+          if (data.location.pano === lastRandomPanoId) {
+            // 如果吸附到的街景恰巧和上一次一样，重新随机
+            setTimeout(() => getRandomSibuLocation(callback, retries + 1), 50);
+          } else {
+            lastRandomPanoId = data.location.pano;
+            callback(data.location.latLng.toJSON());
+          }
+        } else {
+          // 找不到街景则重试
+          setTimeout(() => getRandomSibuLocation(callback, retries + 1), 50);
+        }
+      });
+    }
 
     function initMap() {
       // 初始化 2D 地图
@@ -103,7 +323,7 @@
       map.addListener("click", (e) => {
         // 如果玩家之前点过，先移除旧的大头针
         if (guessMarker) guessMarker.setMap(null);
-        
+
         // 放置新的大头针
         guessMarker = new google.maps.Marker({
           position: e.latLng,
@@ -118,25 +338,67 @@
       // 绑定按钮功能
       document.getElementById("guess-btn").addEventListener("click", calculateScore);
       document.getElementById("next-btn").addEventListener("click", startNewRound);
+      document.getElementById("difficulty").addEventListener("change", startNewRound);
+      document.getElementById("return-btn").addEventListener("click", () => {
+        if (panorama && currentLocation) {
+          panorama.setPosition(currentLocation);
+        }
+      });
+      document.getElementById("skip-btn").addEventListener("click", startNewRound);
     }
 
     function startNewRound() {
-      // 从数组中随机选一个 Sibu 地点
-      currentLocation = locations[Math.floor(Math.random() * locations.length)];
+      const difficulty = document.getElementById("difficulty").value;
 
-      // 重置界面和地图元素
-      document.getElementById("message").innerHTML = "看看四周的街景，<br>在右下角地图上点击你认为的位置！";
-      document.getElementById("guess-btn").style.display = "block";
-      document.getElementById("guess-btn").disabled = true;
+      if (difficulty !== "casual") {
+        startTimer();
+        document.getElementById("timer-panel").style.display = "block";
+        document.getElementById("map-container").style.display = "block";
+        document.getElementById("message").innerHTML = "看看四周的街景，<br>在右下角地图上点击你认为的位置！";
+        document.getElementById("action-buttons").style.display = "flex";
+        document.getElementById("guess-btn").style.display = "block";
+        document.getElementById("guess-btn").disabled = true;
+        document.getElementById("skip-btn").innerText = "跳过";
+      } else {
+        stopTimer();
+        document.getElementById("timer-panel").style.display = "none";
+        document.getElementById("map-container").style.display = "none";
+        document.getElementById("action-buttons").style.display = "flex";
+        document.getElementById("guess-btn").style.display = "none";
+        document.getElementById("skip-btn").innerText = "下一个景点";
+      }
+
       document.getElementById("next-btn").style.display = "none";
-      
+
       if (guessMarker) guessMarker.setMap(null);
       if (actualMarker) actualMarker.setMap(null);
       if (line) line.setMap(null);
-      
+
       map.setCenter({ lat: 2.30, lng: 111.83 });
       map.setZoom(13);
 
+      if (difficulty === "simple") {
+        currentLocation = getNextLocation(locationsSimple, playedSimple);
+        loadPanorama();
+      } else if (difficulty === "medium") {
+        currentLocation = getNextLocation(locationsMedium, playedMedium);
+        loadPanorama();
+      } else if (difficulty === "casual") {
+        const locationsCasual = [...locationsSimple, ...locationsMedium];
+        currentLocation = getNextLocation(locationsCasual, playedCasual);
+        document.getElementById("message").innerHTML = `<b>📍 ${currentLocation.name}</b><br><br>${currentLocation.desc}`;
+        loadPanorama();
+      } else {
+        document.getElementById("message").innerHTML = "正在寻找随机街景，请稍候...";
+        getRandomSibuLocation((loc) => {
+          currentLocation = loc;
+          document.getElementById("message").innerHTML = "看看四周的街景，<br>在右下角地图上点击你认为的位置！";
+          loadPanorama();
+        });
+      }
+    }
+
+    function loadPanorama() {
       // 加载街景
       if (!panorama) {
         panorama = new google.maps.StreetViewPanorama(document.getElementById("pano"), {
@@ -153,6 +415,7 @@
 
     function calculateScore() {
       if (!guessMarker) return;
+      stopTimer();
 
       const guessLatLng = guessMarker.getPosition();
       const actualLatLng = new google.maps.LatLng(currentLocation.lat, currentLocation.lng);
@@ -160,7 +423,7 @@
       // 【核心算法】使用 Google 提供的球面几何库计算两点距离 (单位：米)
       const distanceMetres = google.maps.geometry.spherical.computeDistanceBetween(guessLatLng, actualLatLng);
       const distanceKm = (distanceMetres / 1000).toFixed(2); // 转换成公里，保留两位小数
-      
+
       // 显示正确答案的坐标点
       actualMarker = new google.maps.Marker({
         position: actualLatLng,
@@ -191,10 +454,11 @@
       else if (distanceKm < 1.5) feedback = "很接近了，干得不错！😎";
       else feedback = "哎呀，偏离得有点远喔！😅";
 
-      document.getElementById("message").innerHTML = `<b>相差距离：${distanceKm} km</b><br>${feedback}`;
-      
+      const timeUsed = formatTime(timeElapsed);
+      document.getElementById("message").innerHTML = `<b>相差距离：${distanceKm} km</b><br>用时：${timeUsed}<br>${feedback}`;
+
       // 切换按钮状态
-      document.getElementById("guess-btn").style.display = "none";
+      document.getElementById("action-buttons").style.display = "none";
       document.getElementById("next-btn").style.display = "block";
     }
   </script>
@@ -202,9 +466,10 @@
   <!-- Google Maps API 引入 -->
   <!-- ⚠️ 注意 1：将 YOUR_API_KEY_HERE 换成你自己的 API Key -->
   <!-- ⚠️ 注意 2：libraries=geometry 是计算距离必须要带的参数 -->
-  <script async defer 
-    src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY_HERE&libraries=geometry&callback=initMap">
-  </script>
+  <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC21wPgGcJYGMd54-fRKyMruGSWuMHLx_g&libraries=geometry&callback=initMap">
+    </script>
 
 </body>
+
 </html>
