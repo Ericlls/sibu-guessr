@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Sibu Guessr - 家乡地理大挑战</title>
+  <style>
+    /* 基础重置 */
+    body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    
+    /* 街景占满整个屏幕作为背景 */
+    #pano { width: 100%; height: 100%; position: absolute; z-index: 1; }
+    
+    /* 猜测地图悬浮在右下角 */
+    #map-container {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 320px;
+      height: 240px;
+      z-index: 2;
+      border: 4px solid white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+      transition: all 0.3s ease; /* 动画过渡效果 */
+      opacity: 0.8;
+    }
+    /* 玩家鼠标移过去时，地图变大且完全不透明，方便点击 */
+    #map-container:hover { width: 500px; height: 380px; opacity: 1; }
+    #map { width: 100%; height: 100%; }
+
+    /* 左下角的控制与分数面板 */
+    #ui-panel {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      z-index: 3;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      width: 300px;
+    }
+    h2 { margin: 0 0 10px 0; font-size: 22px; color: #4CAF50; }
+    p { margin: 0 0 15px 0; line-height: 1.5; font-size: 15px;}
+    
+    button { 
+      padding: 10px 20px; cursor: pointer; font-size: 16px; font-weight: bold;
+      background: #4CAF50; color: white; border: none; border-radius: 5px; width: 100%;
+    }
+    button:hover { background: #45a049; }
+    button:disabled { background: #666; color: #aaa; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+  <!-- 1. 街景显示区 -->
+  <div id="pano"></div>
+
+  <!-- 2. 小地图区 -->
+  <div id="map-container">
+    <div id="map"></div>
+  </div>
+
+  <!-- 3. 用户交互面板 -->
+  <div id="ui-panel">
+    <h2>Sibu Guessr 🦢</h2>
+    <p id="message">看看四周的街景，<br>在右下角地图上点击你认为的位置！</p>
+    <button id="guess-btn" disabled>确认位置</button>
+    <button id="next-btn" style="display:none;">下一局</button>
+  </div>
+
+  <script>
+    // 预设几个 Sibu 经典的且有街景的坐标作为题库
+    const locations = [
+      { lat: 2.2894, lng: 111.8267 }, // 诗巫城市广场 (Sibu Town Square)
+      { lat: 2.2872, lng: 111.8286 }, // 中央市场 (Central Market)
+      { lat: 2.2905, lng: 111.8279 }, // 三洋大厦附近 (Wisma Sanyan)
+      { lat: 2.2863, lng: 111.8271 }, // 大伯公庙 (Tua Pek Kong Temple)
+      { lat: 2.3089, lng: 111.8398 }  // 新珠山 (Sungai Merah)
+    ];
+
+    let map, panorama;
+    let guessMarker, actualMarker, line;
+    let currentLocation;
+
+    function initMap() {
+      // 初始化 2D 地图
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 2.30, lng: 111.83 }, // Sibu 中心点
+        zoom: 13,
+        streetViewControl: false, // 关闭地图里的拖拽小人
+        mapTypeControl: false,    // 关闭卫星图切换
+        // 隐藏地图上的各种地名和商家名字，增加难度
+        styles: [{ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }]
+      });
+
+      // 启动第一局
+      startNewRound();
+
+      // 监听地图的点击事件
+      map.addListener("click", (e) => {
+        // 如果玩家之前点过，先移除旧的大头针
+        if (guessMarker) guessMarker.setMap(null);
+        
+        // 放置新的大头针
+        guessMarker = new google.maps.Marker({
+          position: e.latLng,
+          map: map,
+          label: "🤔" // 玩家标记
+        });
+
+        // 玩家选了位置后，允许点击“确认位置”按钮
+        document.getElementById("guess-btn").disabled = false;
+      });
+
+      // 绑定按钮功能
+      document.getElementById("guess-btn").addEventListener("click", calculateScore);
+      document.getElementById("next-btn").addEventListener("click", startNewRound);
+    }
+
+    function startNewRound() {
+      // 从数组中随机选一个 Sibu 地点
+      currentLocation = locations[Math.floor(Math.random() * locations.length)];
+
+      // 重置界面和地图元素
+      document.getElementById("message").innerHTML = "看看四周的街景，<br>在右下角地图上点击你认为的位置！";
+      document.getElementById("guess-btn").style.display = "block";
+      document.getElementById("guess-btn").disabled = true;
+      document.getElementById("next-btn").style.display = "none";
+      
+      if (guessMarker) guessMarker.setMap(null);
+      if (actualMarker) actualMarker.setMap(null);
+      if (line) line.setMap(null);
+      
+      map.setCenter({ lat: 2.30, lng: 111.83 });
+      map.setZoom(13);
+
+      // 加载街景
+      if (!panorama) {
+        panorama = new google.maps.StreetViewPanorama(document.getElementById("pano"), {
+          position: currentLocation,
+          pov: { heading: Math.random() * 360, pitch: 0 }, // 随机玩家的初始视角
+          addressControl: false,  // 必须：隐藏左上角的地址文字
+          showRoadLabels: false,  // 必须：隐藏路面上画的路名
+          zoomControl: true
+        });
+      } else {
+        panorama.setPosition(currentLocation);
+      }
+    }
+
+    function calculateScore() {
+      if (!guessMarker) return;
+
+      const guessLatLng = guessMarker.getPosition();
+      const actualLatLng = new google.maps.LatLng(currentLocation.lat, currentLocation.lng);
+
+      // 【核心算法】使用 Google 提供的球面几何库计算两点距离 (单位：米)
+      const distanceMetres = google.maps.geometry.spherical.computeDistanceBetween(guessLatLng, actualLatLng);
+      const distanceKm = (distanceMetres / 1000).toFixed(2); // 转换成公里，保留两位小数
+      
+      // 显示正确答案的坐标点
+      actualMarker = new google.maps.Marker({
+        position: actualLatLng,
+        map: map,
+        icon: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
+        label: "✅"
+      });
+
+      // 画一条红线连接猜测点和实际点
+      line = new google.maps.Polyline({
+        path: [guessLatLng, actualLatLng],
+        geodesic: true,
+        strokeColor: "#FF4136",
+        strokeOpacity: 1.0,
+        strokeWeight: 3,
+        map: map
+      });
+
+      // 缩放地图，确保能同时看到玩家猜的点和真实点
+      const bounds = new google.maps.LatLngBounds();
+      bounds.extend(guessLatLng);
+      bounds.extend(actualLatLng);
+      map.fitBounds(bounds);
+
+      // 根据距离给出不同的评语
+      let feedback = "";
+      if (distanceKm < 0.3) feedback = "太牛了！你是诗巫活地图吧？🤩";
+      else if (distanceKm < 1.5) feedback = "很接近了，干得不错！😎";
+      else feedback = "哎呀，偏离得有点远喔！😅";
+
+      document.getElementById("message").innerHTML = `<b>相差距离：${distanceKm} km</b><br>${feedback}`;
+      
+      // 切换按钮状态
+      document.getElementById("guess-btn").style.display = "none";
+      document.getElementById("next-btn").style.display = "block";
+    }
+  </script>
+
+  <!-- Google Maps API 引入 -->
+  <!-- ⚠️ 注意 1：将 YOUR_API_KEY_HERE 换成你自己的 API Key -->
+  <!-- ⚠️ 注意 2：libraries=geometry 是计算距离必须要带的参数 -->
+  <script async defer 
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY_HERE&libraries=geometry&callback=initMap">
+  </script>
+
+</body>
+</html>
